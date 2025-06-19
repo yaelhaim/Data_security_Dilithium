@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import numpy as np
 import time
 from dilithium.dilithium import OptimizedDilithium
 from dilithium.rings import Polynomial  # Needed to access Polynomial.Q
@@ -81,13 +81,38 @@ def main():
             print(f"{GREEN}✓ Verification correctly failed with wrong public key{RESET}")
 
         # -------------------- Test 3: Modified signature --------------------
-        print(f"\n{GREY}Verifying with a **modified signature (z)** (should fail)...{RESET}")
-        z_tampered = [Polynomial((poly.coefficients + 1_000_000) % Polynomial.Q) for poly in z]
-        valid = dilithium.verify(message, (z_tampered, c, w), pub)
+        
+        print(f"\n{GREY}Verifying with a **modified witness (w)** (should fail)...{RESET}")
+        w_tampered = [
+            Polynomial([c + 123 for c in poly.coefficients])
+            for poly in w
+        ]
+        valid = dilithium.verify(message, (z, c, w_tampered), pub)
         if valid:
-            print(f"{RED}✗ Verification passed with modified signature – ERROR{RESET}")
+            print(f"{RED}✗ Verification passed with modified witness – ERROR{RESET}")
         else:
-            print(f"{GREEN}✓ Verification correctly failed with modified signature{RESET}")
+            print(f"{GREEN}✓ Verification correctly failed with modified witness{RESET}")
+
+         # -------------------- Test 4: Modified signature --------------------
+        print(f"\n{GREY}Verifying with a **modified challenge (c)** (should fail)...{RESET}")
+        c_tampered = Polynomial([(coeff + 1) % Polynomial.Q for coeff in c.coefficients])
+        valid = dilithium.verify(message, (z, c_tampered, w), pub)
+        if valid:
+            print(f"{RED}✗ Verification passed with modified challenge – ERROR{RESET}")
+        else:
+            print(f"{GREEN}✓ Verification correctly failed with modified challenge{RESET}")
+
+         # --------------------- Test 5: Modified signature ---------------------
+        print(f"\n{GREY}Verifying with a **completely random signature** (should fail)...{RESET}")
+        z_fake = [Polynomial(np.random.randint(0, Polynomial.Q, size=256).tolist()) for _ in z]
+        c_fake = Polynomial(np.random.randint(0, Polynomial.Q, size=len(c.coefficients)).tolist())
+        w_fake = [Polynomial(np.random.randint(0, Polynomial.Q, size=256).tolist()) for _ in w]
+
+        valid = dilithium.verify(message, (z_fake, c_fake, w_fake), pub)
+        if valid:
+            print(f"{RED}✗ Verification passed with random signature – ERROR{RESET}")
+        else:
+            print(f"{GREEN}✓ Verification correctly failed with random signature{RESET}")
 
     except Exception as e:
         print(f"\n{RED}Error: {e}{RESET}")
