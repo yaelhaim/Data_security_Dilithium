@@ -1,92 +1,96 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import time
 from dilithium.dilithium import OptimizedDilithium
 from dilithium.rings import Polynomial  # Needed to access Polynomial.Q
 
-def main():
-    print("=== DILITHIUM SIGNATURE METRICS ===")
-    print("Security Level: 2")
-    print("Message: 'Hello, Dilithium!'\n")
+# ANSI color codes
+CYAN = '\033[96m'
+GREEN = '\033[92m'
+RED = '\033[91m'
+YELLOW = '\033[93m'
+GREY = '\033[90m'
+RESET = '\033[0m'
 
-    # Initialize the Dilithium signature scheme with security level 2
+def main():
+    print(f"{CYAN}=== DILITHIUM SIGNATURE METRICS ==={RESET}")
+    print(f"{CYAN}Security Level: 2{RESET}")
+    print(f"{CYAN}Message: 'Hello, Dilithium!'\n{RESET}")
+
     dilithium = OptimizedDilithium(security_level=2)
     message = b"Hello, Dilithium!"
 
     # -------------------- Key Generation --------------------
-    print("Generating keypair...")
+    print(f"{GREY}Generating keypair...{RESET}")
     start_ns = time.perf_counter_ns()
     pub, priv = dilithium.keygen()
     keygen_time_ms = (time.perf_counter_ns() - start_ns) / 1_000_000
-    print(f"✓ Keys generated in {keygen_time_ms:.2f} ms")
-    print(f"Public key (first 5 coefficients): {pub[1][0].coefficients[:5]}\n")
+    print(f"{GREEN}✓ Keys generated in {keygen_time_ms:.2f} ms{RESET}")
+    print(f"{YELLOW}Public key (first 5 coefficients): {pub[1][0].coefficients[:5]}\n{RESET}")
 
     # -------------------- Signature Generation --------------------
-    print("Generating signature...")
+    print(f"{GREY}Generating signature...{RESET}")
     start_ns = time.perf_counter_ns()
     try:
         z, c, w = dilithium.sign(message)
         sign_time_ms = (time.perf_counter_ns() - start_ns) / 1_000_000
-        print(f"✓ Signature generated in {sign_time_ms:.2f} ms")
+        print(f"{GREEN}✓ Signature generated in {sign_time_ms:.2f} ms{RESET}")
 
-        # Display parts of the signature
-        print("\nSignature Details:")
-        print("-----------------")
-        print(f"Challenge (c): {c.coefficients[:5]}")
-        print(f"Response (z): {z[0].coefficients[:5]}")
-        print(f"Witness (w): {w[0].coefficients[:5]}\n")
+        print(f"\n{CYAN}Signature Details:{RESET}")
+        print(f"{GREY}-----------------{RESET}")
+        print(f"{YELLOW}Challenge (c): {c.coefficients[:5]}{RESET}")
+        print(f"{YELLOW}Response (z): {z[0].coefficients[:5]}{RESET}")
+        print(f"{YELLOW}Witness (w): {w[0].coefficients[:5]}\n{RESET}")
 
         # -------------------- Signature Verification --------------------
-        print("Verifying signature...")
+        print(f"{GREY}Verifying signature...{RESET}")
         start_ns = time.perf_counter_ns()
         valid = dilithium.verify(message, (z, c, w), pub)
         verify_time_ms = (time.perf_counter_ns() - start_ns) / 1_000_000
 
-        # Performance summary
-        print("\nPerformance Summary:")
-        print("------------------")
-        print(f"Key Generation: {keygen_time_ms:>8.2f} ms")
-        print(f"Signing Time:   {sign_time_ms:>8.2f} ms")
-        print(f"Verify Time:    {verify_time_ms:>8.2f} ms")
-        print(f"Total Time:     {(keygen_time_ms + sign_time_ms + verify_time_ms):>8.2f} ms")
+        print(f"\n{CYAN}Performance Summary:{RESET}")
+        print(f"{GREY}------------------{RESET}")
+        print(f"{CYAN}Key Generation:{RESET} {keygen_time_ms:>8.2f} ms")
+        print(f"{CYAN}Signing Time:  {RESET} {sign_time_ms:>8.2f} ms")
+        print(f"{CYAN}Verify Time:   {RESET} {verify_time_ms:>8.2f} ms")
+        print(f"{CYAN}Total Time:    {RESET} {(keygen_time_ms + sign_time_ms + verify_time_ms):>8.2f} ms")
 
         if valid:
-            print("\n✓ Signature verification successful")
+            print(f"\n{GREEN}✓ Signature verification successful{RESET}")
         else:
-            print("\n✗ Signature verification failed")
+            print(f"\n{RED}✗ Signature verification failed{RESET}")
 
         # -------------------- Test 1: Tampered message --------------------
-        print("\nVerifying with a **tampered message** (should fail)...")
+        print(f"\n{GREY}Verifying with a **tampered message** (should fail)...{RESET}")
         tampered_message = b"Hacked message!"
         tampered_valid = dilithium.verify(tampered_message, (z, c, w), pub)
         if tampered_valid:
-            print("✗ Verification passed for tampered message – ERROR")
+            print(f"{RED}✗ Verification passed for tampered message – ERROR{RESET}")
         else:
-            print("✓ Verification correctly failed for tampered message")
+            print(f"{GREEN}✓ Verification correctly failed for tampered message{RESET}")
 
         # -------------------- Test 2: Wrong public key --------------------
-        print("\nVerifying with a **wrong public key** (should fail)...")
+        print(f"\n{GREY}Verifying with a **wrong public key** (should fail)...{RESET}")
         wrong_pub, _ = dilithium.keygen()
         wrong_key_valid = dilithium.verify(message, (z, c, w), wrong_pub)
         if wrong_key_valid:
-            print("✗ Verification passed with wrong public key – ERROR")
+            print(f"{RED}✗ Verification passed with wrong public key – ERROR{RESET}")
         else:
-            print("✓ Verification correctly failed with wrong public key")
+            print(f"{GREEN}✓ Verification correctly failed with wrong public key{RESET}")
 
         # -------------------- Test 3: Modified signature --------------------
-        # Verifying with a **modified signature (z)** (should fail)...
-        print("\nVerifying with a **modified signature (z)** (should fail)...")
-
-        # Tamper with z coefficients significantly to break bounds
+        print(f"\n{GREY}Verifying with a **modified signature (z)** (should fail)...{RESET}")
         z_tampered = [Polynomial((poly.coefficients + 1_000_000) % Polynomial.Q) for poly in z]
         valid = dilithium.verify(message, (z_tampered, c, w), pub)
-
         if valid:
-            print("✗ Verification passed with modified signature – ERROR")
+            print(f"{RED}✗ Verification passed with modified signature – ERROR{RESET}")
         else:
-            print("✓ Verification correctly failed with modified signature")
-
+            print(f"{GREEN}✓ Verification correctly failed with modified signature{RESET}")
 
     except Exception as e:
-        print(f"\nError: {e}")
+        print(f"\n{RED}Error: {e}{RESET}")
 
 if __name__ == "__main__":
     main()
