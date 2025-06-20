@@ -40,4 +40,6 @@ Execution Stages
   Make sure that all required dependencies are installed (such as numpy):
 
     pip install numpy
+    pip install --force-reinstall pycryptodome
+
 
